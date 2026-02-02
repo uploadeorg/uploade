@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+uploade/__init__.py
+uploade.egg-info/PKG-INFO
+uploade.egg-info/SOURCES.txt
+uploade.egg-info/dependency_links.txt
+uploade.egg-info/requires.txt
+uploade.egg-info/top_level.txt

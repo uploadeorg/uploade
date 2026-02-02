@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  uploade:
+    image: python:3.12-slim
+    working_dir: /app
+    command: bash -c "pip install fastapi uvicorn aiofiles orjson pydantic && python app.py"
+    ports:
+      - "80:8000"
+    volumes:
+      - ./data:/app/data
+      - ./app.py:/app/app.py
+      - ./static:/app/static
+    restart: unless-stopped
