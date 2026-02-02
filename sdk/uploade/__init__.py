@@ -17,7 +17,7 @@ def check_update():
     return None
 
 class Uploade:
-    def __init__(self, agent_id, url="https://testsx.com", check_updates=True):
+    def __init__(self, agent_id, url="https://uploade.org", check_updates=True):
         self.agent_id = agent_id
         self.url = url.rstrip("/")
         self._schema = None
