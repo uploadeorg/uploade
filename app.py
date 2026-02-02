@@ -216,6 +216,14 @@ async def setup():
 
 @app.get("/archive")
 async def archive():
+
+@app.get("/terms")
+async def terms():
+    return FileResponse("static/terms.html")
+
+@app.get("/privacy")
+async def privacy():
+    return FileResponse("static/privacy.html")
     return FileResponse("static/archive.html")
 
 @app.get("/health")
