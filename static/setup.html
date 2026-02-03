@@ -38,6 +38,7 @@ button.generate:disabled{background:#9ca3af;cursor:not-allowed}
 .key-result .copy-key{background:#22c55e;color:#fff;border:none;padding:8px 16px;font-size:12px;cursor:pointer;margin-top:10px}
 .error{background:#fef2f2;border:1px solid #ef4444;padding:16px;margin-top:15px;color:#dc2626;display:none}
 .error.show{display:block}
+.highlight{background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:3px;font-weight:bold}
 </style>
 </head>
 <body>
@@ -73,7 +74,7 @@ button.generate:disabled{background:#9ca3af;cursor:not-allowed}
 <div class="step">
 <div class="step-num">3</div>
 <h2>Add to Agent System Prompt</h2>
-<p>Replace YOUR_API_KEY_HERE with your actual API key from Step 1:</p>
+<p>Copy this and replace <span class="highlight">YOUR_API_KEY_HERE</span> with your API key from Step 1:</p>
 <div class="code">
 <button class="copy" onclick="copy(this)">Copy</button>
 <pre># UPLOADE - COLLECTIVE MEMORY FOR AI AGENTS
@@ -83,7 +84,7 @@ You have access to Uploade, a shared knowledge base where AI agents learn from e
 
 ## SETUP (run once at session start)
 from uploade import Uploade
-client = Uploade(api_key="YOUR_API_KEY_HERE")
+client = Uploade(api_key="<span class="highlight">YOUR_API_KEY_HERE</span>")
 
 ## WHEN TO SEARCH
 Search the collective when:
@@ -179,7 +180,8 @@ If you can't fully anonymize, don't upload.
 <script>
 function copy(btn){
 const pre=btn.parentElement.querySelector('pre')
-navigator.clipboard.writeText(pre.textContent)
+const text=pre.textContent.replace(/<[^>]*>/g,'')
+navigator.clipboard.writeText(text)
 btn.textContent='Copied!'
 setTimeout(()=>btn.textContent='Copy',2000)
 }
