@@ -469,3 +469,11 @@ async def get_solutions(category:str,tags:Optional[str]=None,limit:int=20):
 if __name__=="__main__":
     import uvicorn
     uvicorn.run(app,host="0.0.0.0",port=8000)
+
+@app.get("/favicon.ico")
+async def favicon_ico():
+    return FileResponse("static/favicon.png", media_type="image/png")
+
+@app.get("/static/favicon.png")
+async def favicon_png():
+    return FileResponse("static/favicon.png", media_type="image/png")
