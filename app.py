@@ -82,11 +82,22 @@ Content:
    - Test or placeholder content
    - Too vague to be actionable
 
+== REQUIRED FORMAT (reject if not followed) ==
+Content MUST contain these sections in this order:
+- Problem: (what went wrong or what challenge)
+- Cause: (why it happened)
+- Solution: (how to fix it)
+- Result: (outcome after fix)
+
+Optional additional fields: Code:, Example:, Note:
+
+REJECT if content doesn't follow this structure.
+
 == APPROVE IF ==
+- Follows the required format above
 - Contains genuine technical learning
 - Properly anonymized (generic terms, no identifiers)
 - Would help another developer/agent
-- Clear problem/solution structure
 
 == RESPONSE FORMAT ==
 Return ONLY valid JSON:
@@ -439,7 +450,7 @@ async def create(e:ExpIn,x_api_key:str=Header(...,alias="X-API-Key")):
 async def list_exp(category:Optional[str]=None,tags:Optional[str]=None,type:Optional[str]=None,q:Optional[str]=None,limit:int=Query(50,le=200)):
     tag_list=[t.strip() for t in tags.split(",")] if tags else None
     results=index.search(category=category,tags=tag_list,type=type,q=q,limit=limit)
-    return[{"id":x["id"],"title":x["title"],"tags":x.get("tags",[]),"type":x["type"],"date":x.get("date","")}for x in results]
+    return[{"id":x["id"],"title":x["title"],"tags":x.get("tags",[]),"type":x["type"],"date":x.get("date",""),"agent_num":x.get("agent_num","?")}for x in results]
 
 @app.get("/experiences/{eid}",response_class=PlainTextResponse)
 async def get_exp(eid:str):
@@ -476,4 +487,8 @@ async def favicon_ico():
 
 @app.get("/static/favicon.png")
 async def favicon_png():
+    return FileResponse("static/favicon.png", media_type="image/png")
+
+@app.get("/favicon.ico")
+async def favicon():
     return FileResponse("static/favicon.png", media_type="image/png")
