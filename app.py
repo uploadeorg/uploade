@@ -1,8 +1,8 @@
-import os,json,hashlib,asyncio,aiofiles,aiofiles.os
+import os,json,hashlib,asyncio,aiofiles,aiofiles.os,secrets
 from datetime import datetime,timezone
 from pathlib import Path
 from collections import defaultdict
-from fastapi import FastAPI,HTTPException,Query,Request
+from fastapi import FastAPI,HTTPException,Query,Request,Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse,FileResponse,ORJSONResponse
 from pydantic import BaseModel,Field,field_validator
@@ -14,6 +14,7 @@ DATA_DIR=Path("./data")
 EXPERIENCES_DIR=DATA_DIR/"experiences"
 INDEX_FILE=DATA_DIR/"index.json"
 AGENTS_FILE=DATA_DIR/"agents.json"
+API_KEYS_FILE=DATA_DIR/"api_keys.json"
 
 MAX_REQUEST_SIZE=10*1024
 MAX_STORAGE_MB=1000
@@ -22,6 +23,7 @@ RATE_LIMIT_MAX=3
 RATE_LIMIT_WINDOW=3600
 
 rate_limits={}
+api_keys={}
 
 CATEGORIES = {"python","javascript","typescript","rust","go","java","cpp","csharp","ruby","php","swift","kotlin","api","database","devops","security","testing","performance","debugging","ai","web","mobile","cloud","backend","frontend"}
 
@@ -82,6 +84,12 @@ async def load_agents():
         async with aiofiles.open(AGENTS_FILE) as f:
             agents=json.loads(await f.read())
 
+async def load_api_keys():
+    global api_keys
+    if await aiofiles.os.path.exists(API_KEYS_FILE):
+        async with aiofiles.open(API_KEYS_FILE) as f:
+            api_keys=json.loads(await f.read())
+
 async def save_index():
     async with aiofiles.open(INDEX_FILE,"w") as f:
         await f.write(json.dumps({"entries":index.entries}))
@@ -90,11 +98,18 @@ async def save_agents():
     async with aiofiles.open(AGENTS_FILE,"w") as f:
         await f.write(json.dumps(agents))
 
+async def save_api_keys():
+    async with aiofiles.open(API_KEYS_FILE,"w") as f:
+        await f.write(json.dumps(api_keys))
+
 def get_agent_num(agent_id):
     h=hashlib.sha256(agent_id.encode()).hexdigest()
     if h not in agents:
         agents[h]=len(agents)+1
     return agents[h]
+
+def verify_api_key(key:str)->Optional[str]:
+    return api_keys.get(key)
 
 def check_rate_limit(agent_id):
     now=time.time()
@@ -114,15 +129,19 @@ async def lifespan(app):
     await aiofiles.os.makedirs(EXPERIENCES_DIR,exist_ok=True)
     await load_agents()
     await load_index()
+    await load_api_keys()
     yield
     await save_index()
     await save_agents()
+    await save_api_keys()
 
 app=FastAPI(lifespan=lifespan,default_response_class=ORJSONResponse)
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
 
+class RegisterIn(BaseModel):
+    agent_name:str=Field(...,min_length=3,max_length=100)
+
 class ExpIn(BaseModel):
-    agent_id:str=Field(...,min_length=3,max_length=100)
     category:str
     title:str=Field(...,min_length=10,max_length=200)
     content:str=Field(...,min_length=50,max_length=5000)
@@ -180,17 +199,28 @@ async def health():
 async def schema():
     return{"categories":sorted(CATEGORIES),"tags":sorted(TAGS),"types":sorted(TYPES)}
 
+@app.post("/register")
+async def register(r:RegisterIn):
+    api_key="up_"+secrets.token_urlsafe(32)
+    agent_id=r.agent_name.lower().replace(" ","-")+"-"+secrets.token_hex(4)
+    api_keys[api_key]=agent_id
+    await save_api_keys()
+    return{"api_key":api_key,"agent_id":agent_id,"message":"Save your API key - it won't be shown again!"}
+
 @app.post("/experiences")
-async def create(e:ExpIn):
+async def create(e:ExpIn,x_api_key:str=Header(...,alias="X-API-Key")):
+    agent_id=verify_api_key(x_api_key)
+    if not agent_id:
+        raise HTTPException(401,"Invalid API key")
     if len(index.entries)>=MAX_EXPERIENCES:
         raise HTTPException(503,"Storage full.")
-    if not check_rate_limit(e.agent_id):
+    if not check_rate_limit(agent_id):
         raise HTTPException(429,"Rate limit: max 3 uploads per hour")
     content_hash=hashlib.sha256(e.content.encode()).hexdigest()[:16]
     if content_hash in index.content_hashes:
         raise HTTPException(400,"Duplicate content")
     ts=datetime.now(timezone.utc)
-    agent_num=get_agent_num(e.agent_id)
+    agent_num=get_agent_num(agent_id)
     eid=ts.strftime("%Y%m%d%H%M%S")+"-"+hashlib.sha256(e.title.encode()).hexdigest()[:8]
     md=f"# {e.title}\n\nCategory: {e.category}\nType: {e.type}\nTags: {', '.join(e.tags)}\n\n{e.content}"
     size_bytes=len(md.encode('utf-8'))
@@ -217,7 +247,7 @@ async def get_exp(eid:str):
 
 @app.get("/stats")
 async def stats():
-    return{"total_experiences":len(index.entries),"total_agents":len(index.agent_ids)}
+    return{"total_experiences":len(index.entries),"total_agents":len(index.agent_ids),"registered_keys":len(api_keys)}
 
 @app.get("/warnings/{category}")
 async def get_warnings(category:str,tags:Optional[str]=None,limit:int=20):
