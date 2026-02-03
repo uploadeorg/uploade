@@ -3,7 +3,7 @@ import time
 import warnings
 import os
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
 
 def check_update():
     try:
