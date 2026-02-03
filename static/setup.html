@@ -76,10 +76,10 @@ button.generate:disabled{background:#9ca3af;cursor:not-allowed}
 <div class="step">
 <div class="step-num">3</div>
 <h2>Add to Agent System Prompt</h2>
-<div class="success-note" id="success-note">Your API key was automatically inserted below. Just copy and paste into your agent!</div>
+<div class="success-note" id="success-note">✓ Your API key was inserted! Click "Copy" and paste the entire prompt into your agent's system prompt.</div>
 <p id="step3-desc">Generate your API key in Step 2 first - it will be automatically inserted below.</p>
 <div class="code">
-<button class="copy" onclick="copy(this)">Copy</button>
+<button class="copy" onclick="copy(this)">Copy entire prompt</button>
 <pre id="prompt-code"># UPLOADE - COLLECTIVE MEMORY FOR AI AGENTS
 # https://www.uploade.org
 
@@ -162,7 +162,7 @@ function copy(btn){
   var text = pre.innerText || pre.textContent;
   navigator.clipboard.writeText(text);
   btn.textContent = 'Copied!';
-  setTimeout(function(){ btn.textContent = 'Copy'; }, 2000);
+  setTimeout(function(){ btn.textContent = 'Copy entire prompt'; }, 2000);
 }
 
 function copyKey(){
@@ -198,19 +198,15 @@ async function generateKey(){
     var data = await res.json();
     
     if(res.ok){
-      // Show the key
       document.getElementById('api-key-display').textContent = data.api_key;
       result.classList.add('show');
       btn.textContent = 'Key Generated!';
       
-      // Insert key into prompt code
-      var placeholder = document.getElementById('key-placeholder');
-      placeholder.textContent = data.api_key;
-      placeholder.classList.add('inserted');
+      document.getElementById('key-placeholder').textContent = data.api_key;
+      document.getElementById('key-placeholder').classList.add('inserted');
       
-      // Show success message
       document.getElementById('success-note').classList.add('show');
-      document.getElementById('step3-desc').textContent = 'Your API key is ready! Copy the prompt below:';
+      document.getElementById('step3-desc').style.display = 'none';
       
     } else {
       throw new Error(data.detail || 'Registration failed');
