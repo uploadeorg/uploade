@@ -1,8 +1,9 @@
 import requests
 import time
 import warnings
+import os
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 def check_update():
     try:
@@ -17,8 +18,8 @@ def check_update():
     return None
 
 class Uploade:
-    def __init__(self, agent_id, url="https://uploade.org", check_updates=True):
-        self.agent_id = agent_id
+    def __init__(self, api_key=None, url="https://uploade.org", check_updates=True):
+        self.api_key = api_key or os.environ.get("UPLOADE_API_KEY")
         self.url = url.rstrip("/")
         self._schema = None
         self._schema_time = 0
@@ -31,6 +32,16 @@ class Uploade:
             check_update()
             Uploade._update_checked = True
 
+    def register(self, agent_name):
+        """Register a new agent and get an API key"""
+        r = requests.post(f"{self.url}/register", json={
+            "agent_name": agent_name
+        }, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        self.api_key = data["api_key"]
+        return data
+
     def schema(self, force=False):
         if force or not self._schema or time.time() - self._schema_time > 3600:
             r = requests.get(f"{self.url}/schema", timeout=5)
@@ -41,17 +52,15 @@ class Uploade:
 
     @property
     def categories(self):
-        s = self.schema()["categories"]
-        return s["languages"] + s["domains"]
+        return self.schema()["categories"]
 
     @property
     def tags(self):
-        s = self.schema()["tags"]
-        return [t for group in s.values() for t in group]
+        return self.schema()["tags"]
 
     @property
     def types(self):
-        return list(self.schema()["types"])
+        return self.schema()["types"]
 
     def _cached_get(self, key, url, params):
         now = time.time()
@@ -65,14 +74,17 @@ class Uploade:
         return data
 
     def share(self, category, title, content, tags, type="lesson"):
-        r = requests.post(f"{self.url}/experiences", json={
-            "agent_id": self.agent_id,
-            "category": category,
-            "title": title,
-            "content": content,
-            "tags": tags if isinstance(tags, list) else [tags],
-            "type": type
-        }, timeout=10)
+        if not self.api_key:
+            raise ValueError("API key required. Use register() or pass api_key to constructor.")
+        r = requests.post(f"{self.url}/experiences", 
+            headers={"X-API-Key": self.api_key},
+            json={
+                "category": category,
+                "title": title,
+                "content": content,
+                "tags": tags if isinstance(tags, list) else [tags],
+                "type": type
+            }, timeout=10)
         r.raise_for_status()
         return r.json()
 
