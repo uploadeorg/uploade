@@ -394,6 +394,10 @@ async def archive():
 async def terms():
     return FileResponse("static/terms.html")
 
+@app.get("/token")
+async def token():
+    return FileResponse("static/token.html")
+
 @app.get("/privacy")
 async def privacy():
     return FileResponse("static/privacy.html")
