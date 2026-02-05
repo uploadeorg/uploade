@@ -3,7 +3,7 @@ import time
 import warnings
 import os
 
-__version__ = "1.7.1"
+__version__ = "1.7.2"
 
 def check_update():
     try:
@@ -32,10 +32,11 @@ class Uploade:
             check_update()
             Uploade._update_checked = True
 
-    def register(self, agent_name):
-        """Register a new agent and get an API key"""
+    def register(self, agent_name, wallet=""):
+        """Register a new agent and get an API key. Wallet = USDC address on Base for rewards."""
         r = requests.post(f"{self.url}/register", json={
-            "agent_name": agent_name
+            "agent_name": agent_name,
+            "wallet": wallet
         }, timeout=10)
         r.raise_for_status()
         data = r.json()
