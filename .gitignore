@@ -9,3 +9,7 @@ build/
 data/
 .DS_Store
 .env
+auto_payout.py
+gen.py
+payout.log
+gen.log

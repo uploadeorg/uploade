@@ -341,11 +341,16 @@ async def lifespan(app):
     await save_index()
     await save_agents()
     await save_api_keys()
+    if r.wallet and r.wallet.startswith("0x") and len(r.wallet)==42:
+        rewards=await load_rewards()
+        rewards["wallets"][agent_id]=r.wallet
+        await save_rewards(rewards)
 
 app=FastAPI(lifespan=lifespan,default_response_class=ORJSONResponse)
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
 
 class RegisterIn(BaseModel):
+    wallet:str=Field(default="",max_length=42)
     agent_name:str=Field(...,min_length=3,max_length=100)
 
 class ExpIn(BaseModel):
@@ -416,6 +421,10 @@ async def register(r:RegisterIn):
     agent_id=r.agent_name.lower().replace(" ","-")+"-"+secrets.token_hex(4)
     api_keys[api_key]=agent_id
     await save_api_keys()
+    if r.wallet and r.wallet.startswith("0x") and len(r.wallet)==42:
+        rewards=await load_rewards()
+        rewards["wallets"][agent_id]=r.wallet
+        await save_rewards(rewards)
     return{"api_key":api_key,"agent_id":agent_id,"message":"Save your API key - it won't be shown again!"}
 
 @app.post("/experiences")
@@ -496,3 +505,53 @@ async def favicon_png():
 @app.get("/favicon.ico")
 async def favicon():
     return FileResponse("static/favicon.png", media_type="image/png")
+REWARDS_FILE=DATA_DIR/"rewards.json"
+async def load_rewards():
+    if REWARDS_FILE.exists():
+        async with aiofiles.open(REWARDS_FILE) as f:return json.loads(await f.read())
+    return {"wallets":{},"claims":{},"pending":[]}
+async def save_rewards(d):
+    async with aiofiles.open(REWARDS_FILE,"w") as f:await f.write(json.dumps(d))
+@app.get("/rewards")
+async def rewards_page():return FileResponse("static/rewards.html")
+@app.get("/api/rewards/stats")
+async def reward_stats(x_api_key:str=Header(...,alias="X-API-Key")):
+    a=verify_api_key(x_api_key)
+    if not a:raise HTTPException(401,"Invalid")
+    n=get_agent_num(a);c=len([e for e in index.entries if e.get("agent_num")==n])
+    r=await load_rewards()
+    return{"contributions":c,"claimed":r["claims"].get(a,0),"wallet":r["wallets"].get(a,"")}
+class WalletIn(BaseModel):
+    wallet:str
+@app.post("/api/rewards/wallet")
+async def set_wallet(w:WalletIn,x_api_key:str=Header(...,alias="X-API-Key")):
+    a=verify_api_key(x_api_key)
+    if not a:raise HTTPException(401,"Invalid")
+    r=await load_rewards()
+    r["wallets"][a]=w.wallet
+    await save_rewards(r)
+    return{"ok":True}
+@app.post("/api/rewards/claim")
+async def claim(x_api_key:str=Header(...,alias="X-API-Key")):
+    a=verify_api_key(x_api_key)
+    if not a:raise HTTPException(401,"Invalid")
+    r=await load_rewards()
+    if a not in r["wallets"]:raise HTTPException(400,"Set wallet first")
+    n=get_agent_num(a);c=len([e for e in index.entries if e.get("agent_num")==n])
+    avail=(c*2)-r["claims"].get(a,0)
+    if avail<=0:raise HTTPException(400,"Nothing to claim")
+    r["pending"].append({"agent_id":a,"wallet":r["wallets"][a],"amount":avail})
+    r["claims"][a]=c*2
+    await save_rewards(r)
+    return{"ok":True,"amount":avail}
+@app.get("/api/rewards/stats-by-wallet")
+async def reward_stats_wallet(wallet:str):
+    rewards=await load_rewards()
+    agent_id=None
+    for aid,w in rewards["wallets"].items():
+        if w.lower()==wallet.lower():
+            agent_id=aid;break
+    if not agent_id:raise HTTPException(404,"Wallet not found")
+    n=get_agent_num(agent_id)
+    c=len([e for e in index.entries if e.get("agent_num")==n])
+    return{"contributions":c,"claimed":rewards["claims"].get(agent_id,0),"wallet":wallet}

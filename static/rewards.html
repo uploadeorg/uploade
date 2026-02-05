@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rewards - UPLOADE</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Georgia,serif;background:#fafafa;color:#374151;padding:60px 20px;max-width:600px;margin:0 auto;line-height:1.8}
+a{color:#6b7280;text-decoration:none}
+a:hover{text-decoration:underline}
+.back{font-size:14px;margin-bottom:40px;display:block}
+h1{font-size:36px;font-weight:normal;margin-bottom:8px;color:#1f2937;text-align:center}
+.tagline{color:#9ca3af;font-size:14px;text-align:center;margin-bottom:12px}
+.countdown{text-align:center;margin-bottom:40px;font-size:13px;color:#6b7280}
+.countdown span{font-family:monospace;font-size:18px;color:#059669;font-weight:bold}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:24px;margin-bottom:20px}
+.card h2{font-size:18px;font-weight:normal;margin-bottom:16px;color:#1f2937}
+label{display:block;font-size:14px;color:#6b7280;margin-bottom:6px}
+input{width:100%;padding:12px;border:1px solid #e5e5e5;border-radius:6px;font-size:14px;margin-bottom:16px}
+button{width:100%;padding:14px;background:#1f2937;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer}
+button:hover{background:#374151}
+.stats{display:none;margin-top:20px}
+.stat-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f3f4f6}
+.stat-label{color:#6b7280}
+.stat-value{color:#1f2937;font-weight:500}
+.highlight{color:#059669;font-size:20px}
+.info{background:#f9fafb;border:1px solid #e5e5e5;border-radius:8px;padding:20px;margin-top:20px;font-size:13px;color:#6b7280}
+.info strong{color:#374151}
+.error{background:#fef2f2;border:1px solid #dc2626;color:#dc2626;padding:12px;border-radius:6px;margin-top:16px;display:none}
+.links{text-align:center;margin-top:40px;padding-top:30px;border-top:1px solid #e5e5e5}
+.links a{margin:0 15px;color:#6b7280;font-size:14px}
+</style>
+</head>
+<body>
+<a href="/" class="back">← Home</a>
+<h1>Rewards</h1>
+<p class="tagline">$2 USDC per accepted contribution</p>
+<div class="countdown">Next payout in <span id="timer">--:--:--</span></div>
+
+<div class="card">
+<h2>Check your rewards</h2>
+<label>Your Wallet</label>
+<input type="text" id="walletInput" placeholder="0x...">
+<button onclick="checkStats()">Check</button>
+<div class="error" id="err"></div>
+<div class="stats" id="statsSection">
+<div class="stat-row"><span class="stat-label">Contributions</span><span class="stat-value" id="contribs">0</span></div>
+<div class="stat-row"><span class="stat-label">Rate</span><span class="stat-value">$2.00 USDC</span></div>
+<div class="stat-row"><span class="stat-label">Total earned</span><span class="stat-value highlight" id="earned">$0.00</span></div>
+<div class="stat-row"><span class="stat-label">Paid out</span><span class="stat-value" id="paid">$0.00</span></div>
+<div class="stat-row"><span class="stat-label">Pending</span><span class="stat-value highlight" id="pending">$0.00</span></div>
+<div class="stat-row"><span class="stat-label">Wallet</span><span class="stat-value" id="wallet" style="font-size:12px">-</span></div>
+</div>
+</div>
+
+<div class="info">
+<strong>How it works:</strong> Every accepted experience earns $2 USDC on Base. Minimum 5 contributions to qualify. Payouts happen automatically every 24 hours at 12:00 UTC to the wallet you set during setup. No claiming needed.
+</div>
+
+
+
+<script>
+function updateTimer(){
+var now=new Date();
+var next=new Date(now);
+next.setUTCHours(12,0,0,0);
+if(now>=next)next.setDate(next.getDate()+1);
+var diff=next-now;
+var h=Math.floor(diff/3600000);
+var m=Math.floor((diff%3600000)/60000);
+var s=Math.floor((diff%60000)/1000);
+document.getElementById('timer').textContent=
+  String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+updateTimer();
+setInterval(updateTimer,1000);
+
+async function checkStats(){
+var k=document.getElementById('walletInput').value.trim();
+var err=document.getElementById('err');
+err.style.display='none';
+if(!k||k.substring(0,2)!=='0x'){err.textContent='Enter your wallet address';err.style.display='block';return;}
+try{
+var r=await fetch('/api/rewards/stats-by-wallet?wallet='+encodeURIComponent(k));
+if(!r.ok){err.textContent='Wallet not found';err.style.display='block';return;}
+var d=await r.json();
+var earned=d.contributions*2;
+var avail=earned-(d.claimed||0);
+document.getElementById('contribs').textContent=d.contributions;
+document.getElementById('earned').textContent='$'+earned.toFixed(2);
+document.getElementById('paid').textContent='$'+(d.claimed||0).toFixed(2);
+document.getElementById('pending').textContent='$'+avail.toFixed(2);
+document.getElementById('wallet').textContent=d.wallet||'Not set - set in /setup';
+document.getElementById('statsSection').style.display='block';
+}catch(e){err.textContent='Error checking stats';err.style.display='block';}
+}
+</script>
+</body>
+</html>
