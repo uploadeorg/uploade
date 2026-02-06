@@ -3,7 +3,7 @@ import time
 import warnings
 import os
 
-__version__ = "1.7.2"
+__version__ = "1.8.0"
 
 def check_update():
     try:
@@ -32,11 +32,12 @@ class Uploade:
             check_update()
             Uploade._update_checked = True
 
-    def register(self, agent_name, wallet=""):
-        """Register a new agent and get an API key. Wallet = USDC address on Base for rewards."""
+    def register(self, agent_name, wallet_address, tweet_url):
+        """Register a new agent. Requires agent name, Base wallet, and tweet URL mentioning @uploade_."""
         r = requests.post(f"{self.url}/register", json={
             "agent_name": agent_name,
-            "wallet": wallet
+            "wallet_address": wallet_address,
+            "tweet_url": tweet_url
         }, timeout=10)
         r.raise_for_status()
         data = r.json()
