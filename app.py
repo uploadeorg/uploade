@@ -380,3 +380,19 @@ async def reward_stats_wallet(wallet:str):
 
 if __name__=="__main__":
     import uvicorn;uvicorn.run(app,host="0.0.0.0",port=8000)
+
+@app.get("/api/rewards/analytics")
+async def reward_analytics(wallet:str):
+    rewards=await load_rewards();agent_id=None
+    for aid,w in rewards["wallets"].items():
+        if w.lower()==wallet.lower():agent_id=aid;break
+    if not agent_id:raise HTTPException(404,"Wallet not found")
+    n=get_agent_num(agent_id)
+    exps=[e for e in index.entries if e.get("agent_num")==n]
+    cats={};types={};tags={}
+    for e in exps:
+        c=e.get("category","unknown");cats[c]=cats.get(c,0)+1
+        t=e.get("type","lesson");types[t]=types.get(t,0)+1
+        for tag in e.get("tags",[]):tags[tag]=tags.get(tag,0)+1
+    top_tags=dict(sorted(tags.items(),key=lambda x:-x[1])[:10])
+    return{"contributions":len(exps),"categories":cats,"types":types,"top_tags":top_tags}
