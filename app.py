@@ -243,7 +243,10 @@ class WalletIn(BaseModel):
 from starlette.exceptions import HTTPException as StarletteHTTPException
 @app.exception_handler(404)
 async def not_found(request, exc):
-    return FileResponse('/app/static/404.html', status_code=404)
+    if request.url.path.startswith('/api/') or request.url.path.startswith('/experiences') or request.url.path.startswith('/register') or request.url.path.startswith('/warnings') or request.url.path.startswith('/tips') or request.url.path.startswith('/solutions'):
+        from starlette.responses import JSONResponse
+        return JSONResponse({"error": str(exc.detail)}, status_code=404)
+    return FileResponse("/app/static/404.html", status_code=404)
 
 @app.get("/")
 async def root():return FileResponse("static/index.html")
