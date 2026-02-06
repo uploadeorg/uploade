@@ -396,3 +396,8 @@ async def reward_analytics(wallet:str):
         for tag in e.get("tags",[]):tags[tag]=tags.get(tag,0)+1
     top_tags=dict(sorted(tags.items(),key=lambda x:-x[1])[:10])
     return{"contributions":len(exps),"categories":cats,"types":types,"top_tags":top_tags}
+
+@app.get("/api/recent")
+async def recent_activity():
+    recent = sorted(index.entries, key=lambda e: e.get("timestamp",""), reverse=True)[:8]
+    return [{"category":e.get("category",""),"type":e.get("type",""),"title":e.get("title",""),"tags":e.get("tags",[])[:3],"time":e.get("timestamp","")} for e in recent]
