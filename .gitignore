@@ -13,3 +13,16 @@ auto_payout.py
 gen.py
 payout.log
 gen.log
+generated_wallets.json
+.env
+.env
+*.log
+__pycache__/
+gen.py
+gen1.py
+gen2.py
+gen3.py
+gen.py.save
+*.backup
+generated_wallets.json
+experience_generator.py
